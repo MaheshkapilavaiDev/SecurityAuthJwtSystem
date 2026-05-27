@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin")
 public class AdminController {
 
-    @GetMapping
+    @GetMapping()
     @PreAuthorize("hasRole('ADMIN')")
     public String adminApi() {
 

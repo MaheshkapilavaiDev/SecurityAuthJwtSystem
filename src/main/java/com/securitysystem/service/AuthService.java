@@ -20,8 +20,12 @@ public class AuthService {
 
 	@Autowired
 	private UserRepository userRepository;
+	
 	@Autowired
 	private JwtService jwtService;
+	
+	@Autowired
+	private AuditService auditService;
 
 	@Autowired
 	private PasswordEncoder passwordEncoder;
@@ -32,6 +36,11 @@ public class AuthService {
 				.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
 
 		User user = userRepository.findByUsername(request.getUsername()).orElseThrow();
+		
+		auditService.log(
+                user.getUsername(),
+                "LOGIN_SUCCESS"
+        );
 
 		String accessToken = jwtService.generateToken(user);
 
@@ -54,4 +63,6 @@ public class AuthService {
 
 		return "User Registered Successfully";
 	}
+	
+	
 }

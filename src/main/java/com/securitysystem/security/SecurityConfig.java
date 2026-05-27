@@ -1,10 +1,12 @@
 package com.securitysystem.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -14,8 +16,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.securitysystem.config.TenantFilter;
 import com.securitysystem.service.CustomUserDetailsService;
 
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -24,50 +29,90 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	@Autowired
-	private JwtAuthenticationFilter jwtFilter;
-	
-	@Autowired
+    @Autowired
+    private JwtAuthenticationFilter jwtFilter;
+
+    @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    @Bean
+    public TenantFilter tenantFilter() {
+        return new TenantFilter();
+    }
 
-		http.csrf(csrf -> csrf.disable())
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
 
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        http
+            .csrf(csrf -> csrf.disable())
 
-				.authorizeHttpRequests(auth -> auth
+            .sessionManagement(session ->
+                    session.sessionCreationPolicy(
+                            SessionCreationPolicy.STATELESS))
 
-						.requestMatchers("/auth/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+            .authorizeHttpRequests(auth -> auth
 
-						.requestMatchers("/admin/**").hasRole("ADMIN")
+                    .requestMatchers(
+                            "/auth/**",
+                            "/swagger-ui/**",
+                            "/v3/api-docs/**",
+                            "/swagger-ui.html")
+                    .permitAll()
 
-						.anyRequest().authenticated())
+                    .requestMatchers("/admin/**")
+                    .hasRole("ADMIN")
 
-				.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                    .anyRequest()
+                    .authenticated())
 
-		return http.build();
-	}
-	
-	@Bean
-	public AuthenticationProvider authenticationProvider() {
+            // Tenant Filter
+            .addFilterBefore(
+                    tenantFilter(),
+                    UsernamePasswordAuthenticationFilter.class)
 
-	    DaoAuthenticationProvider provider =
-	            new DaoAuthenticationProvider(
-	                    customUserDetailsService
-	            );
+            // JWT Filter
+            .addFilterBefore(
+                    jwtFilter,
+                    UsernamePasswordAuthenticationFilter.class);
 
-	    provider.setPasswordEncoder(
-	            passwordEncoder()
-	    );
+        return http.build();
+    }
 
-	    return provider;
-	}
-	
-	@Bean
-	public PasswordEncoder passwordEncoder() {
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
 
-	    return new BCryptPasswordEncoder();
-	}
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider();
+
+        provider.setUserDetailsService(
+                customUserDetailsService);
+
+        provider.setPasswordEncoder(
+                passwordEncoder());
+
+        return provider;
+    }
+
+    @Bean
+    AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config)
+            throws Exception {
+
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+    
+    /*@Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Security System API")
+                        .version("1.0")
+                        .description("APIs for document upload, sharing, folder management, and access tracking"));
+    }*/
 }
