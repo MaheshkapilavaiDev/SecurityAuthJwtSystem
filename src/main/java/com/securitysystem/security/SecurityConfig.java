@@ -19,8 +19,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import com.securitysystem.config.TenantFilter;
 import com.securitysystem.service.CustomUserDetailsService;
 
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Info;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
